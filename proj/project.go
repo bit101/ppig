@@ -20,7 +20,6 @@ type Project struct {
 	TemplatePath string
 	Template     tmpl.TemplateDef
 	TokenValues  map[string]string
-	GoModName    string
 }
 
 func NewProject(projectPath, templateName string) *Project {
@@ -36,7 +35,6 @@ func NewProject(projectPath, templateName string) *Project {
 func (p *Project) Build() {
 	copy.Copy(p.TemplatePath, p.ProjectPath)
 	p.replaceTokens()
-	p.getGoModName()
 	p.finalize()
 }
 
@@ -99,22 +97,27 @@ func (p *Project) replaceTokens() {
 	})
 }
 
-func (p *Project) getGoModName() {
+func (p *Project) getGoModName() string {
 	fmt.Print("Go module: " + conf.Config.GoModBase)
 	var modName string
 	_, err := fmt.Scanln(&modName)
 	if err != nil {
 		log.Fatal(err)
 	}
-	p.GoModName = conf.Config.GoModBase + modName
+	return conf.Config.GoModBase + modName
 }
 
 func (p *Project) finalize() {
-	cmd := exec.Command("go", "mod", "init", p.GoModName)
+	if p.Template.Language == "go" {
+		p.finalizeGo()
+	}
+}
+
+func (p *Project) finalizeGo() {
+	cmd := exec.Command("go", "mod", "init", p.getGoModName())
 	cmd.Dir = p.ProjectPath
 	err := cmd.Run()
 	if err != nil {
-
 		log.Fatal("error: ", err)
 	}
 

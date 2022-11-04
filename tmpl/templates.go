@@ -19,12 +19,12 @@ type Token struct {
 }
 
 type TemplateDef struct {
-	Name    string
-	Author  string
-	Contact string
-	Type    string
-	Tokens  []Token
-	GoLibs  []string
+	Name     string
+	Author   string
+	Contact  string
+	Language string
+	Tokens   []Token
+	GoLibs   []string
 }
 
 func GetTemplate() string {
@@ -41,7 +41,9 @@ func GetTemplate() string {
 		util.PrintRed("Invalid template choice")
 		os.Exit(1)
 	}
-	return items[choice-1]
+	templateName := items[choice-1]
+	util.PrintGreen(fmt.Sprintf("Using '%s' template", templateName))
+	return templateName
 }
 
 func GetTemplates() []string {
