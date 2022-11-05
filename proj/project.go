@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/bit101/ppig/conf"
+	"github.com/bit101/go-ansi"
 	"github.com/bit101/ppig/tmpl"
 	"github.com/bit101/ppig/util"
 	"github.com/otiai10/copy"
@@ -36,6 +36,7 @@ func (p *Project) Build() {
 	copy.Copy(p.TemplatePath, p.ProjectPath)
 	p.replaceTokens()
 	p.finalize()
+	ansi.Printf(ansi.Green, "A '%s' project has been created in the '%s' directory!", p.TemplateName, p.ProjectPath)
 }
 
 func (p *Project) getProjectPath(projectPath string) {
@@ -43,14 +44,14 @@ func (p *Project) getProjectPath(projectPath string) {
 		p.ProjectPath = projectPath
 		return
 	}
-	fmt.Print("Create project in directory: ")
+	ansi.Print(ansi.Brown, "Create project in directory: ")
 	fmt.Scanln(&projectPath)
 	if projectPath == "" {
-		util.PrintRed("No directory specified")
+		ansi.Println(ansi.Red, "No directory specified")
 		os.Exit(1)
 	}
 	if util.DoesPathExist(projectPath) {
-		util.PrintRed(fmt.Sprintf("Something already here with the name '%s'", projectPath))
+		ansi.Printf(ansi.Red, "Something already here with the name '%s'\n", projectPath)
 		os.Exit(1)
 	}
 	p.ProjectPath = projectPath
@@ -60,7 +61,7 @@ func (p *Project) getTemplate(templateName string) {
 	if templateName == "" {
 		p.TemplateName = tmpl.GetTemplate()
 	} else if !tmpl.ValidateTemplate(templateName) {
-		util.PrintRed(fmt.Sprintf("'%s' is not a valid template name.\n", templateName))
+		ansi.Printf(ansi.Red, "'%s' is not a valid template name.\n", templateName)
 		p.TemplateName = tmpl.GetTemplate()
 	} else {
 		p.TemplateName = templateName
@@ -97,37 +98,13 @@ func (p *Project) replaceTokens() {
 	})
 }
 
-func (p *Project) getGoModName() string {
-	fmt.Print("Go module: " + conf.Config.GoModBase)
-	var modName string
-	_, err := fmt.Scanln(&modName)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return conf.Config.GoModBase + modName
-}
-
 func (p *Project) finalize() {
-	if p.Template.Language == "go" {
-		p.finalizeGo()
-	}
-}
-
-func (p *Project) finalizeGo() {
-	cmd := exec.Command("go", "mod", "init", p.getGoModName())
-	cmd.Dir = p.ProjectPath
-	err := cmd.Run()
-	if err != nil {
-		log.Fatal("error: ", err)
-	}
-
-	for _, lib := range p.Template.GoLibs {
-		cmd := exec.Command("go", "get", lib)
+	if p.Template.Post != "" {
+		cmd := exec.Command("./" + p.Template.Post)
 		cmd.Dir = p.ProjectPath
 		err := cmd.Run()
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal("error: ", err)
 		}
 	}
-
 }

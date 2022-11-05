@@ -7,12 +7,10 @@ import (
 
 type ConfigDef struct {
 	TemplatePath string
-	GoModBase    string
 }
 
 var Config = ConfigDef{
 	TemplatePath: getConfigDir() + "/protopig/protopig-templates/",
-	GoModBase:    "github.com/bit101/",
 }
 
 func getConfigDir() string {

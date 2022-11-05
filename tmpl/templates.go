@@ -7,15 +7,18 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"strconv"
 
+	"github.com/bit101/go-ansi"
 	"github.com/bit101/ppig/conf"
 	"github.com/bit101/ppig/util"
 )
 
 type Token struct {
-	Name     string
-	Required bool
-	Default  string
+	Name    string
+	Token   string
+	Default string
+	Prefix  string
 }
 
 type TemplateDef struct {
@@ -23,33 +26,44 @@ type TemplateDef struct {
 	Author   string
 	Contact  string
 	Language string
+	Post     string
 	Tokens   []Token
 	GoLibs   []string
 }
 
 func GetTemplate() string {
 	items := GetTemplates()
-	fmt.Printf("Choose a template (1 to %d):\n", len(items))
+	ansi.Printf(ansi.Brown, "Choose a template (1 to %d):\n", len(items))
 	for i := 0; i < len(items); i++ {
 		fmt.Printf("%2d. %s\n", i+1, items[i])
 	}
-	fmt.Print("Choice: ")
+	ansi.Print(ansi.Brown, "Choice: ")
 
-	var choice int
-	_, err := fmt.Scanf("%d", &choice)
-	if err != nil || choice < 1 || choice > len(items) {
-		util.PrintRed("Invalid template choice")
+	var choice string
+	_, err := fmt.Scanln(&choice)
+	if err != nil {
+		ansi.Println(ansi.Red, "Could not read choice")
 		os.Exit(1)
 	}
-	templateName := items[choice-1]
-	util.PrintGreen(fmt.Sprintf("Using '%s' template", templateName))
+	choice64, err := strconv.ParseInt(choice, 10, 64)
+	if err != nil {
+		ansi.Printf(ansi.Red, "Invalid template choice: '%s'\n", choice)
+		os.Exit(1)
+	}
+	choiceNum := int(choice64)
+	if int(choiceNum) < 1 || int(choiceNum) > len(items) {
+		ansi.Printf(ansi.Red, "Template choice not in range 1 to %d\n", len(items))
+		os.Exit(1)
+	}
+	templateName := items[choiceNum-1]
+	ansi.Printf(ansi.Green, "Using '%s' template\n", templateName)
 	return templateName
 }
 
 func GetTemplates() []string {
 	dirItems, err := ioutil.ReadDir(conf.Config.TemplatePath)
 	if err != nil {
-		util.PrintRed("Unable to read templates")
+		ansi.Println(ansi.Red, "Unable to read templates")
 		os.Exit(1)
 	}
 
@@ -76,7 +90,7 @@ func ValidateTemplate(template string) bool {
 func GetTemplatePath(templateName string) string {
 	templatePath := conf.Config.TemplatePath + templateName
 	if !util.DoesPathExist(templatePath) {
-		util.PrintRed("Could not find template")
+		ansi.Println(ansi.Red, "Could not find template")
 		os.Exit(1)
 	}
 	return templatePath
@@ -97,9 +111,10 @@ func GetTokenValues(tokens []Token) map[string]string {
 	tokenValues := map[string]string{}
 	scanner := bufio.NewScanner(os.Stdin)
 	for _, token := range tokens {
-		fmt.Printf("%s: ", token.Name)
+		ansi.Printf(ansi.Brown, "%s: ", token.Name)
+		fmt.Printf("%s", token.Prefix)
 		if scanner.Scan() {
-			tokenValues[token.Name] = scanner.Text()
+			tokenValues[token.Token] = token.Prefix + scanner.Text()
 		}
 	}
 	return tokenValues
