@@ -33,11 +33,11 @@ type TemplateDef struct {
 
 func GetTemplate() string {
 	items := GetTemplates()
-	ansi.Printf(ansi.Brown, "Choose a template (1 to %d):\n", len(items))
+	ansi.Printf(ansi.Yellow, "Choose a template (1 to %d):\n", len(items))
 	for i := 0; i < len(items); i++ {
 		fmt.Printf("%2d. %s\n", i+1, items[i])
 	}
-	ansi.Print(ansi.Brown, "Choice: ")
+	ansi.Print(ansi.Yellow, "Choice: ")
 
 	var choice string
 	_, err := fmt.Scanln(&choice)
@@ -111,7 +111,7 @@ func GetTokenValues(tokens []Token) map[string]string {
 	tokenValues := map[string]string{}
 	scanner := bufio.NewScanner(os.Stdin)
 	for _, token := range tokens {
-		ansi.Printf(ansi.Brown, "%s: ", token.Name)
+		ansi.Printf(ansi.Yellow, "%s: ", token.Name)
 		fmt.Printf("%s", token.Prefix)
 		if scanner.Scan() {
 			tokenValues[token.Token] = token.Prefix + scanner.Text()

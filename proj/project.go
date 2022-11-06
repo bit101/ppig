@@ -44,7 +44,7 @@ func (p *Project) getProjectPath(projectPath string) {
 		p.ProjectPath = projectPath
 		return
 	}
-	ansi.Print(ansi.Brown, "Create project in directory: ")
+	ansi.Print(ansi.Yellow, "Create project in directory: ")
 	fmt.Scanln(&projectPath)
 	if projectPath == "" {
 		ansi.Println(ansi.Red, "No directory specified")
