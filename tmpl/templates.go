@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/bit101/go-ansi"
 	"github.com/bit101/ppig/conf"
@@ -15,49 +16,73 @@ import (
 )
 
 type Token struct {
-	Name    string
-	Token   string
-	Default string
-	Prefix  string
+	Name    string `json:"name"`
+	Token   string `json:"token"`
+	Default string `json:"default"`
+	Prefix  string `json:"prefix"`
 }
 
 type TemplateDef struct {
 	Name     string
 	Author   string
-	Contact  string
 	Language string
 	Post     string
 	Tokens   []Token
-	GoLibs   []string
+	SkipDir  bool
 }
 
 func GetTemplate() string {
 	items := GetTemplates()
+	var choiceNum int
+	ok := false
+	printChoices(items)
+	for !ok {
+
+		ansi.Print(ansi.Yellow, "Choice: ")
+		var choice string
+		_, err := fmt.Scanln(&choice)
+		if err != nil {
+			ansi.ClearLine()
+			ansi.Println(ansi.Red, "Could not read choice")
+			ansi.MoveUp(len(items) + 4)
+			printChoices(items)
+			ansi.ClearLine()
+			continue
+		}
+		if strings.ToLower(choice) == "q" {
+			os.Exit(0)
+		}
+		choice64, err := strconv.ParseInt(choice, 10, 64)
+		if err != nil {
+			ansi.ClearLine()
+			ansi.Printf(ansi.Red, "Invalid template choice: '%s'\n", choice)
+			ansi.MoveUp(len(items) + 4)
+			printChoices(items)
+			ansi.ClearLine()
+			continue
+		}
+		choiceNum = int(choice64)
+		if int(choiceNum) < 1 || int(choiceNum) > len(items) {
+			ansi.ClearLine()
+			ansi.Printf(ansi.Red, "Template choice not in range 1 to %d\n", len(items))
+			ansi.MoveUp(len(items) + 4)
+			printChoices(items)
+			continue
+		}
+		ok = true
+	}
+	templateName := items[choiceNum-1]
+	ansi.ClearLine()
+	ansi.Printf(ansi.Green, "Using '%s' template\n", templateName)
+	return templateName
+}
+
+func printChoices(items []string) {
 	ansi.Printf(ansi.Yellow, "Choose a template (1 to %d):\n", len(items))
 	for i := 0; i < len(items); i++ {
 		fmt.Printf("%2d. %s\n", i+1, items[i])
 	}
-	ansi.Print(ansi.Yellow, "Choice: ")
-
-	var choice string
-	_, err := fmt.Scanln(&choice)
-	if err != nil {
-		ansi.Println(ansi.Red, "Could not read choice")
-		os.Exit(1)
-	}
-	choice64, err := strconv.ParseInt(choice, 10, 64)
-	if err != nil {
-		ansi.Printf(ansi.Red, "Invalid template choice: '%s'\n", choice)
-		os.Exit(1)
-	}
-	choiceNum := int(choice64)
-	if int(choiceNum) < 1 || int(choiceNum) > len(items) {
-		ansi.Printf(ansi.Red, "Template choice not in range 1 to %d\n", len(items))
-		os.Exit(1)
-	}
-	templateName := items[choiceNum-1]
-	ansi.Printf(ansi.Green, "Using '%s' template\n", templateName)
-	return templateName
+	fmt.Println(" Q. Quit")
 }
 
 func GetTemplates() []string {
@@ -104,6 +129,7 @@ func GetTemplateConfig(templatePath string) TemplateDef {
 	}
 
 	json.Unmarshal(configData, &templateDef)
+	fmt.Printf("templateDef %+v\n", templateDef)
 	return templateDef
 }
 
