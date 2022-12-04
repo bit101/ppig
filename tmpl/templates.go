@@ -1,20 +1,19 @@
+// Package tmpl manages templates
 package tmpl
 
 import (
-	"bufio"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
-	"strconv"
-	"strings"
 
+	"github.com/AlecAivazis/survey/v2"
 	"github.com/bit101/go-ansi"
 	"github.com/bit101/ppig/conf"
 	"github.com/bit101/ppig/util"
 )
 
+// Token represents a replaceable token in a template file.
 type Token struct {
 	Name    string `json:"name"`
 	Token   string `json:"token"`
@@ -22,6 +21,7 @@ type Token struct {
 	Prefix  string `json:"prefix"`
 }
 
+// TemplateDef is the structure of a template.
 type TemplateDef struct {
 	Name     string
 	Author   string
@@ -31,64 +31,25 @@ type TemplateDef struct {
 	SkipDir  bool
 }
 
+// GetTemplate prompts the user go choose a template.
 func GetTemplate() string {
 	items := GetTemplates()
-	var choiceNum int
-	ok := false
-	printChoices(items)
-	for !ok {
-
-		ansi.Print(ansi.Yellow, "Choice: ")
-		var choice string
-		_, err := fmt.Scanln(&choice)
-		if err != nil {
-			ansi.ClearLine()
-			ansi.Println(ansi.Red, "Could not read choice")
-			ansi.MoveUp(len(items) + 4)
-			printChoices(items)
-			ansi.ClearLine()
-			continue
-		}
-		if strings.ToLower(choice) == "q" {
-			os.Exit(0)
-		}
-		choice64, err := strconv.ParseInt(choice, 10, 64)
-		if err != nil {
-			ansi.ClearLine()
-			ansi.Printf(ansi.Red, "Invalid template choice: '%s'\n", choice)
-			ansi.MoveUp(len(items) + 4)
-			printChoices(items)
-			ansi.ClearLine()
-			continue
-		}
-		choiceNum = int(choice64)
-		if int(choiceNum) < 1 || int(choiceNum) > len(items) {
-			ansi.ClearLine()
-			ansi.Printf(ansi.Red, "Template choice not in range 1 to %d\n", len(items))
-			ansi.MoveUp(len(items) + 4)
-			printChoices(items)
-			continue
-		}
-		ok = true
+	var templateName string
+	prompt := survey.Select{
+		Message:  "Choose a template.",
+		Options:  items,
+		VimMode:  true,
+		PageSize: 10,
 	}
-	templateName := items[choiceNum-1]
-	ansi.ClearLine()
-	ansi.Printf(ansi.Green, "Using '%s' template\n", templateName)
+	survey.AskOne(&prompt, &templateName)
 	return templateName
 }
 
-func printChoices(items []string) {
-	ansi.Printf(ansi.Yellow, "Choose a template (1 to %d):\n", len(items))
-	for i := 0; i < len(items); i++ {
-		fmt.Printf("%2d. %s\n", i+1, items[i])
-	}
-	fmt.Println(" Q. Quit")
-}
-
+// GetTemplates gets the list of templates.
 func GetTemplates() []string {
 	dirItems, err := ioutil.ReadDir(conf.Config.TemplatePath)
 	if err != nil {
-		ansi.Println(ansi.Red, "Unable to read templates")
+		ansi.Println(ansi.Red, "X Unable to read templates")
 		os.Exit(1)
 	}
 
@@ -102,6 +63,8 @@ func GetTemplates() []string {
 	return result
 }
 
+// ValidateTemplate validates that the specified template exists.
+// only called if template is specified as argument to ppig.
 func ValidateTemplate(template string) bool {
 	templates := GetTemplates()
 	for _, t := range templates {
@@ -112,15 +75,17 @@ func ValidateTemplate(template string) bool {
 	return false
 }
 
+// GetTemplatePath returns the full path of the specified template.
 func GetTemplatePath(templateName string) string {
 	templatePath := conf.Config.TemplatePath + templateName
 	if !util.DoesPathExist(templatePath) {
-		ansi.Println(ansi.Red, "Could not find template")
+		ansi.Println(ansi.Red, "X Could not find template")
 		os.Exit(1)
 	}
 	return templatePath
 }
 
+// GetTemplateConfig gets the config file for the give template.
 func GetTemplateConfig(templatePath string) TemplateDef {
 	var templateDef TemplateDef
 	configData, err := os.ReadFile(templatePath + "/protopig.json")
@@ -129,19 +94,20 @@ func GetTemplateConfig(templatePath string) TemplateDef {
 	}
 
 	json.Unmarshal(configData, &templateDef)
-	fmt.Printf("templateDef %+v\n", templateDef)
 	return templateDef
 }
 
+// GetTokenValues prompts the user for a value for each token.
 func GetTokenValues(tokens []Token) map[string]string {
 	tokenValues := map[string]string{}
-	scanner := bufio.NewScanner(os.Stdin)
 	for _, token := range tokens {
-		ansi.Printf(ansi.Yellow, "%s: ", token.Name)
-		fmt.Printf("%s", token.Prefix)
-		if scanner.Scan() {
-			tokenValues[token.Token] = token.Prefix + scanner.Text()
+		var answer string
+		prompt := survey.Input{
+			Message: token.Name,
 		}
+		survey.AskOne(&prompt, &answer)
+
+		tokenValues[token.Token] = token.Prefix + answer
 	}
 	return tokenValues
 }

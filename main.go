@@ -29,8 +29,6 @@ func main() {
 		fmt.Println("configuring....")
 		return
 	}
-
 	project := proj.NewProject(*pathFlag, *templateFlag)
 	project.Build()
-
 }

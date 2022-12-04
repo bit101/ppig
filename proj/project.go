@@ -1,19 +1,22 @@
+// Package proj creates the project
 package proj
 
 import (
-	"fmt"
+	"errors"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 
+	"github.com/AlecAivazis/survey/v2"
 	"github.com/bit101/go-ansi"
 	"github.com/bit101/ppig/tmpl"
 	"github.com/bit101/ppig/util"
 	"github.com/otiai10/copy"
 )
 
+// Project is the structure of a project
 type Project struct {
 	TemplateName string
 	ProjectPath  string
@@ -22,6 +25,7 @@ type Project struct {
 	TokenValues  map[string]string
 }
 
+// NewProject sets up a new project.
 func NewProject(projectPath, templateName string) *Project {
 	p := &Project{}
 	p.getTemplate(templateName)
@@ -32,11 +36,12 @@ func NewProject(projectPath, templateName string) *Project {
 	return p
 }
 
+// Build creates the project.
 func (p *Project) Build() {
 	copy.Copy(p.TemplatePath, p.ProjectPath)
 	p.replaceTokens()
 	p.finalize()
-	ansi.Printf(ansi.Green, "A '%s' project has been created in the '%s' directory!", p.TemplateName, p.ProjectPath)
+	ansi.Printf(ansi.Green, "A '%s' project has been created in the '%s' directory!\n", p.TemplateName, p.ProjectPath)
 }
 
 func (p *Project) getProjectPath(projectPath string) {
@@ -44,24 +49,33 @@ func (p *Project) getProjectPath(projectPath string) {
 		p.ProjectPath = projectPath
 		return
 	}
-	ansi.Print(ansi.Yellow, "Create project in directory: ")
-	fmt.Scanln(&projectPath)
-	if projectPath == "" {
-		ansi.Println(ansi.Red, "No directory specified")
-		os.Exit(1)
+	prompt := survey.Input{
+		Message: "Create project in directory:",
 	}
-	if util.DoesPathExist(projectPath) {
-		ansi.Printf(ansi.Red, "Something already here with the name '%s'\n", projectPath)
-		os.Exit(1)
-	}
+	survey.AskOne(&prompt, &projectPath, survey.WithValidator(validatePath))
 	p.ProjectPath = projectPath
+}
+
+func validatePath(val interface{}) error {
+	if val == "" {
+		return errors.New("path is required")
+	}
+	projectPath, ok := val.(string)
+	if !ok {
+		return errors.New("could not parse path")
+	}
+
+	if util.DoesPathExist(projectPath) {
+		return errors.New("something already exists at that path")
+	}
+	return nil
 }
 
 func (p *Project) getTemplate(templateName string) {
 	if templateName == "" {
 		p.TemplateName = tmpl.GetTemplate()
 	} else if !tmpl.ValidateTemplate(templateName) {
-		ansi.Printf(ansi.Red, "'%s' is not a valid template name.\n", templateName)
+		ansi.Printf(ansi.Red, "X %q is not a valid template name.\n", templateName)
 		p.TemplateName = tmpl.GetTemplate()
 	} else {
 		p.TemplateName = templateName
